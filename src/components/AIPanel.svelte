@@ -95,13 +95,13 @@
     <div class="header">
       <span class="title">AI Librarian</span>
       {#if !$isConfigured}
-        <button class="configure-btn" on:click={() => $showSettings = true}>
+        <button class="configure-btn" on:click={() => $showSettings = true} data-testid="configure-api-btn">
           Configure API
         </button>
       {/if}
     </div>
 
-    <div class="messages" bind:this={messagesContainer}>
+    <div class="messages" bind:this={messagesContainer} data-testid="ai-messages">
       {#if $messages.length === 0 && !$isStreaming}
         <div class="welcome-message">
           <p>I'm your vault librarian. I can help you:</p>
@@ -167,6 +167,7 @@
     display: flex;
     flex-direction: column;
     height: 100%;
+    overflow: hidden;
   }
 
   .header {
@@ -248,6 +249,7 @@
     flex: 1;
     overflow-y: auto;
     padding: 1rem;
+    min-height: 0;
   }
 
   .welcome-message {

@@ -26,7 +26,7 @@
     <span class="title">Files</span>
   </div>
 
-  <div class="tree-content">
+  <div class="tree-content" data-testid="file-tree-content">
     {#each $fileTree as node (node.path)}
       <TreeNode {node} depth={0} onSelect={handleFileClick} />
     {/each}
@@ -38,6 +38,7 @@
     display: flex;
     flex-direction: column;
     height: 100%;
+    overflow: hidden;
   }
 
   .header {
@@ -48,11 +49,13 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--text-muted);
+    flex-shrink: 0;
   }
 
   .tree-content {
     flex: 1;
     overflow-y: auto;
     padding: 0.5rem 0;
+    min-height: 0;
   }
 </style>

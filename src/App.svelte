@@ -1,5 +1,7 @@
 <script>
-  import { rootHandle, fileTree, vaultName, isLoading, error } from './stores/vault.js';
+  import { onMount } from 'svelte';
+  import { rootHandle, fileTree, vaultName, currentFile, isLoading, error } from './stores/vault.js';
+  import { messages } from './stores/ai.js';
   import { isSupported, openVault, buildFileTree } from './lib/filesystem.js';
   import FileTree from './components/FileTree.svelte';
   import Editor from './components/Editor.svelte';
@@ -7,6 +9,95 @@
   import Toolbar from './components/Toolbar.svelte';
 
   const supported = isSupported();
+  let testMode = false;
+
+  onMount(() => {
+    // Check for test mode
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('testMode') === 'true') {
+      testMode = true;
+      loadTestData();
+    }
+  });
+
+  function loadTestData() {
+    // Mock vault name
+    $vaultName = 'Test Vault';
+    $rootHandle = { name: 'Test Vault' }; // Mock handle to bypass welcome screen
+
+    // Generate mock file tree with many files to test scrolling
+    const mockFolders = ['Concepts', 'Projects', 'Journal', 'Processes', 'Systems'];
+    const mockTree = mockFolders.map(folder => ({
+      name: folder,
+      path: folder,
+      type: 'folder',
+      expanded: folder === 'Concepts',
+      handle: null,
+      children: Array.from({ length: 10 }, (_, i) => ({
+        name: `${folder.slice(0, -1)} ${i + 1}.md`,
+        path: `${folder}/${folder.slice(0, -1)} ${i + 1}.md`,
+        type: 'file',
+        isMarkdown: true,
+        handle: null
+      }))
+    }));
+
+    // Add some root-level files
+    mockTree.push({
+      name: 'README.md',
+      path: 'README.md',
+      type: 'file',
+      isMarkdown: true,
+      handle: null
+    });
+
+    $fileTree = mockTree;
+
+    // Set a mock current file
+    $currentFile = {
+      name: 'README.md',
+      path: 'README.md',
+      type: 'file',
+      isMarkdown: true,
+      handle: null,
+      content: `# Test Vault
+
+This is a **test vault** for Playwright testing.
+
+## Features
+
+- File tree scrolling
+- AI panel scrolling
+- Markdown preview
+
+## Links
+
+Check out [[Concept 1]] and [[Project 1]].
+
+\`\`\`javascript
+const test = "code block";
+console.log(test);
+\`\`\`
+
+> This is a blockquote for testing styles.
+
+### More Content
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+`
+    };
+
+    // Add mock AI messages to test scrolling
+    const mockMessages = Array.from({ length: 15 }, (_, i) => ({
+      role: i % 2 === 0 ? 'user' : 'assistant',
+      content: i % 2 === 0
+        ? `Test question ${Math.floor(i / 2) + 1}: How do I organize my vault?`
+        : `This is a test response ${Math.floor(i / 2) + 1}. You should organize your vault using folders like Concepts, Projects, and Processes. Each note should have proper frontmatter and links to related notes.`,
+      timestamp: Date.now() - (15 - i) * 60000
+    }));
+
+    $messages = mockMessages;
+  }
 
   async function handleOpenVault() {
     $isLoading = true;
@@ -81,14 +172,14 @@
     </div>
   {:else}
     <Toolbar />
-    <div class="workspace">
-      <aside class="sidebar">
+    <div class="workspace" data-testid="workspace">
+      <aside class="sidebar" data-testid="sidebar">
         <FileTree />
       </aside>
-      <section class="editor-pane">
+      <section class="editor-pane" data-testid="editor-pane">
         <Editor />
       </section>
-      <aside class="ai-pane">
+      <aside class="ai-pane" data-testid="ai-pane">
         <AIPanel />
       </aside>
     </div>
@@ -222,7 +313,8 @@
   .sidebar {
     background: var(--bg-secondary);
     border-right: 1px solid var(--border);
-    overflow-y: auto;
+    overflow: hidden;
+    min-height: 0;
   }
 
   .editor-pane {
@@ -237,6 +329,8 @@
     border-left: 1px solid var(--border);
     display: flex;
     flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
   }
 
   @media (max-width: 1024px) {
