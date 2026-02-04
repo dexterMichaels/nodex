@@ -109,12 +109,16 @@
       node.connectedEdges().addClass('highlighted');
     });
 
-    // Drag - move connected nodes with force effect
+    // Drag - apply spring-like force to connected nodes (similar to Obsidian)
     cy.on('drag', 'node', (evt) => {
       const node = evt.target;
       const neighbors = node.neighborhood('node');
 
-      // Apply subtle force to neighbors (they follow partially)
+      // Spring physics parameters
+      const restLength = 120; // Natural edge length
+      const stiffness = 0.008; // Very low stiffness for subtle movement
+      const maxForce = 2; // Cap the force to prevent aggressive movement
+
       neighbors.forEach(neighbor => {
         if (!neighbor.grabbed()) {
           const nodePos = node.position();
@@ -123,12 +127,17 @@
           const dy = nodePos.y - neighborPos.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
 
-          if (distance > 50) {
-            // Move neighbor slightly toward dragged node
-            const factor = 0.05;
+          // Only apply force if edge is stretched beyond rest length
+          if (distance > restLength) {
+            const stretch = distance - restLength;
+            // Spring force: F = k * stretch, but capped and direction-normalized
+            const force = Math.min(stretch * stiffness, maxForce);
+            const nx = dx / distance; // Normalized direction
+            const ny = dy / distance;
+
             neighbor.position({
-              x: neighborPos.x + dx * factor,
-              y: neighborPos.y + dy * factor
+              x: neighborPos.x + nx * force,
+              y: neighborPos.y + ny * force
             });
           }
         }
