@@ -147,11 +147,19 @@
   function applyOrphanFilter() {
     if (!cy || !graphData) return;
 
+    // Filter nodes by checking data property
+    const orphanNodes = cy.nodes().filter(node => node.data('isOrphan') === true);
+
     if (hideOrphans) {
-      cy.nodes('[isOrphan]').hide();
+      orphanNodes.hide();
     } else {
-      cy.nodes('[isOrphan]').show();
+      orphanNodes.show();
     }
+  }
+
+  function toggleOrphanFilter() {
+    hideOrphans = !hideOrphans;
+    applyOrphanFilter();
   }
 
   function handleNodeClick(nodeData) {
@@ -307,23 +315,21 @@
       {#if stats}
         <span class="stat">{stats.nodeCount} notes</span>
         <span class="stat">{stats.edgeCount} links</span>
-        <span class="stat" class:warning={stats.orphanCount > 0}>
-          {stats.orphanCount} orphans
-        </span>
+        <button
+          class="stat orphan-filter"
+          class:active={hideOrphans}
+          class:warning={stats.orphanCount > 0 && !hideOrphans}
+          on:click={toggleOrphanFilter}
+          title={hideOrphans ? 'Show orphans' : 'Hide orphans'}
+        >
+          {stats.orphanCount} orphans {hideOrphans ? '(hidden)' : ''}
+        </button>
       {/if}
     </div>
     <div class="graph-actions">
       <button class="icon-button" on:click={handleFit} title="Fit to view">Fit</button>
       <button class="icon-button" on:click={handleRelayout} title="Re-layout">Relayout</button>
     </div>
-  </div>
-
-  <!-- Filters -->
-  <div class="graph-filters">
-    <label class="filter-toggle">
-      <input type="checkbox" bind:checked={hideOrphans} />
-      <span>Hide orphans</span>
-    </label>
   </div>
 
   <!-- Views Section -->
@@ -463,6 +469,27 @@
     color: var(--warning);
   }
 
+  .orphan-filter {
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+  }
+
+  .orphan-filter:hover {
+    background: var(--bg-secondary);
+    border-color: var(--border);
+  }
+
+  .orphan-filter.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+
+  .orphan-filter.active:hover {
+    background: var(--accent-hover);
+  }
+
   .graph-actions {
     display: flex;
     gap: 0.5rem;
@@ -481,26 +508,6 @@
   .icon-button:hover {
     background: var(--bg-secondary);
     color: var(--text-primary);
-  }
-
-  /* Filters */
-  .graph-filters {
-    padding: 0.5rem 1rem;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-
-  .filter-toggle {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    cursor: pointer;
-  }
-
-  .filter-toggle input {
-    cursor: pointer;
   }
 
   /* Views Section */
