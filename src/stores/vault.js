@@ -9,6 +9,9 @@ export const viewMode = writable('editor');
 // Editor mode: 'edit' or 'preview'
 export const editorMode = writable('edit');
 
+// Scroll position (as percentage 0-1) to sync between edit/preview modes
+export const editorScrollPosition = writable(0);
+
 // File tree structure
 export const fileTree = writable([]);
 

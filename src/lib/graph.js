@@ -191,9 +191,9 @@ export function createCytoscapeConfig(container, graphData, options = {}) {
       coolingFactor: 0.95,
       minTemp: 1.0
     },
-    minZoom: 0.1,
-    maxZoom: 4,
-    wheelSensitivity: 0.2,
+    minZoom: 0.05,
+    maxZoom: 6,
+    wheelSensitivity: 0.8,
     boxSelectionEnabled: false,
     autounselectify: false
   };

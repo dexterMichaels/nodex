@@ -1,6 +1,9 @@
 <script>
+  import { onMount, onDestroy } from 'svelte';
   import { marked } from 'marked';
-  import { currentFile } from '../stores/vault.js';
+  import { currentFile, editorScrollPosition } from '../stores/vault.js';
+
+  let previewContent;
 
   // Configure marked options
   marked.setOptions({
@@ -9,6 +12,33 @@
   });
 
   $: html = $currentFile?.content ? marked.parse($currentFile.content) : '';
+
+  function saveScrollPosition() {
+    if (!previewContent) return;
+    if (previewContent.scrollHeight > previewContent.clientHeight) {
+      const maxScroll = previewContent.scrollHeight - previewContent.clientHeight;
+      const percentage = maxScroll > 0 ? previewContent.scrollTop / maxScroll : 0;
+      editorScrollPosition.set(percentage);
+    }
+  }
+
+  function restoreScrollPosition() {
+    if (!previewContent) return;
+    const maxScroll = previewContent.scrollHeight - previewContent.clientHeight;
+    const targetScroll = $editorScrollPosition * maxScroll;
+    previewContent.scrollTop = targetScroll;
+  }
+
+  onMount(() => {
+    // Restore scroll position after content renders
+    requestAnimationFrame(() => {
+      restoreScrollPosition();
+    });
+  });
+
+  onDestroy(() => {
+    saveScrollPosition();
+  });
 </script>
 
 <div class="markdown-preview" data-testid="markdown-preview">
@@ -16,7 +46,7 @@
     <div class="preview-header">
       <span class="filename">{$currentFile.name}</span>
     </div>
-    <div class="preview-content">
+    <div class="preview-content" bind:this={previewContent}>
       {@html html}
     </div>
   {:else}

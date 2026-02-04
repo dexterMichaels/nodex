@@ -4,13 +4,14 @@
   import { markdown } from '@codemirror/lang-markdown';
   import { EditorState } from '@codemirror/state';
   import { oneDark } from '@codemirror/theme-one-dark';
-  import { currentFile, rootHandle } from '../stores/vault.js';
+  import { currentFile, rootHandle, editorScrollPosition, editorMode } from '../stores/vault.js';
   import { writeFile } from '../lib/filesystem.js';
 
   let editorContainer;
   let editorView;
   let hasUnsavedChanges = false;
   let saveTimeout;
+  let currentFilePath = null; // Track which file is loaded to avoid unnecessary recreations
 
   // Custom theme to match our design
   const nodexTheme = EditorView.theme({
@@ -63,6 +64,31 @@
       state,
       parent: editorContainer
     });
+
+    // Restore scroll position after editor is created
+    requestAnimationFrame(() => {
+      restoreScrollPosition();
+    });
+  }
+
+  function saveScrollPosition() {
+    if (!editorView) return;
+    const scroller = editorView.scrollDOM;
+    if (scroller && scroller.scrollHeight > scroller.clientHeight) {
+      const maxScroll = scroller.scrollHeight - scroller.clientHeight;
+      const percentage = maxScroll > 0 ? scroller.scrollTop / maxScroll : 0;
+      editorScrollPosition.set(percentage);
+    }
+  }
+
+  function restoreScrollPosition() {
+    if (!editorView) return;
+    const scroller = editorView.scrollDOM;
+    if (scroller) {
+      const maxScroll = scroller.scrollHeight - scroller.clientHeight;
+      const targetScroll = $editorScrollPosition * maxScroll;
+      scroller.scrollTop = targetScroll;
+    }
   }
 
   function debouncedSave() {
@@ -79,7 +105,7 @@
       const content = editorView.state.doc.toString();
       await writeFile($currentFile.handle, content);
       hasUnsavedChanges = false;
-      $currentFile.content = content;
+      // Don't update $currentFile.content here - it triggers reactivity and recreates editor
     } catch (err) {
       console.error('Failed to save file:', err);
     }
@@ -93,9 +119,15 @@
     }
   }
 
-  // Watch for file changes
-  $: if ($currentFile && editorContainer) {
+  // Watch for file changes - only recreate editor when a DIFFERENT file is selected
+  $: if ($currentFile && editorContainer && $currentFile.path !== currentFilePath) {
+    currentFilePath = $currentFile.path;
     createEditor($currentFile.content);
+  }
+
+  // Reset when no file is selected
+  $: if (!$currentFile) {
+    currentFilePath = null;
   }
 
   onMount(() => {
@@ -106,6 +138,9 @@
   });
 
   onDestroy(() => {
+    // Save scroll position before destroying
+    saveScrollPosition();
+
     if (editorView) {
       editorView.destroy();
     }
