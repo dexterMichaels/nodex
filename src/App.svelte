@@ -13,6 +13,35 @@
   const supported = isSupported();
   let testMode = false;
 
+  // AI Panel resizing
+  let aiPanelWidth = 350;
+  let isResizing = false;
+  let workspaceEl;
+
+  function startResize(e) {
+    isResizing = true;
+    document.addEventListener('mousemove', handleResize);
+    document.addEventListener('mouseup', stopResize);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }
+
+  function handleResize(e) {
+    if (!isResizing || !workspaceEl) return;
+    const workspaceRect = workspaceEl.getBoundingClientRect();
+    const newWidth = workspaceRect.right - e.clientX;
+    // Constrain between 250px and 600px
+    aiPanelWidth = Math.max(250, Math.min(600, newWidth));
+  }
+
+  function stopResize() {
+    isResizing = false;
+    document.removeEventListener('mousemove', handleResize);
+    document.removeEventListener('mouseup', stopResize);
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  }
+
   // Handle node selection from graph view
   async function handleNodeSelect(event) {
     const { file } = event.detail;
@@ -122,14 +151,63 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor i
 `
     };
 
-    // Add mock AI messages to test scrolling
-    const mockMessages = Array.from({ length: 15 }, (_, i) => ({
-      role: i % 2 === 0 ? 'user' : 'assistant',
-      content: i % 2 === 0
-        ? `Test question ${Math.floor(i / 2) + 1}: How do I organize my vault?`
-        : `This is a test response ${Math.floor(i / 2) + 1}. You should organize your vault using folders like Concepts, Projects, and Processes. Each note should have proper frontmatter and links to related notes.`,
-      timestamp: Date.now() - (15 - i) * 60000
-    }));
+    // Add mock AI messages with markdown formatting to test rendering
+    const mockResponses = [
+      `## Organizing Your Vault
+
+Here's how to organize your vault effectively:
+
+1. **Use folders** for major categories
+2. **Add frontmatter** to every note
+3. **Link related notes** with \`[[wiki-links]]\`
+
+> The key is consistency in your naming conventions.
+
+See [[Getting Started]] for more details.`,
+      `### Recommended Structure
+
+\`\`\`
+vault/
+├── Concepts/
+├── Projects/
+├── Processes/
+└── Journal/
+\`\`\`
+
+Each folder serves a **specific purpose**:
+- *Concepts* - definitions and mental models
+- *Projects* - time-bound initiatives
+- *Processes* - reusable procedures`,
+      `To create a new note:
+
+1. Click the **+** button in the file tree
+2. Choose a descriptive name
+3. Add frontmatter at the top:
+
+\`\`\`yaml
+---
+type: concept
+created: 2026-02-03
+tags: [knowledge-management]
+---
+\`\`\`
+
+Then start writing your content with **bold**, *italic*, and \`code\` formatting.`
+    ];
+
+    const mockMessages = [];
+    for (let i = 0; i < 6; i++) {
+      mockMessages.push({
+        role: 'user',
+        content: `Question ${i + 1}: How do I organize my vault?`,
+        timestamp: Date.now() - (6 - i) * 120000
+      });
+      mockMessages.push({
+        role: 'assistant',
+        content: mockResponses[i % mockResponses.length],
+        timestamp: Date.now() - (6 - i) * 120000 + 30000
+      });
+    }
 
     $messages = mockMessages;
   }
@@ -207,7 +285,12 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor i
     </div>
   {:else}
     <Toolbar />
-    <div class="workspace" data-testid="workspace">
+    <div
+      class="workspace"
+      data-testid="workspace"
+      bind:this={workspaceEl}
+      style="grid-template-columns: 250px 1fr 4px {aiPanelWidth}px"
+    >
       <aside class="sidebar" data-testid="sidebar">
         <FileTree />
       </aside>
@@ -260,6 +343,14 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor i
           </div>
         {/if}
       </section>
+      <div
+        class="resize-handle"
+        on:mousedown={startResize}
+        class:active={isResizing}
+        role="separator"
+        aria-orientation="vertical"
+        tabindex="0"
+      ></div>
       <aside class="ai-pane" data-testid="ai-pane">
         <AIPanel />
       </aside>
@@ -387,8 +478,30 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor i
   .workspace {
     flex: 1;
     display: grid;
-    grid-template-columns: 250px 1fr 350px;
+    /* grid-template-columns set via inline style for resize */
     overflow: hidden;
+  }
+
+  .resize-handle {
+    width: 4px;
+    background: var(--border);
+    cursor: col-resize;
+    transition: background 0.15s;
+    position: relative;
+  }
+
+  .resize-handle:hover,
+  .resize-handle.active {
+    background: var(--accent);
+  }
+
+  .resize-handle::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -4px;
+    right: -4px;
+    bottom: 0;
   }
 
   .sidebar {

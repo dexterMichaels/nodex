@@ -1,5 +1,6 @@
 <script>
   import { onMount, afterUpdate, tick } from 'svelte';
+  import { marked } from 'marked';
   import {
     provider, apiKey, messages, streamingResponse, isStreaming,
     showSettings, isConfigured, addMessage, startStreaming,
@@ -14,6 +15,17 @@
   let inputElement;
 
   const frameworks = getAllFrameworks();
+
+  // Configure marked for safe rendering
+  marked.setOptions({
+    breaks: true,
+    gfm: true
+  });
+
+  // Render markdown content
+  function renderMarkdown(content) {
+    return marked.parse(content);
+  }
 
   async function handleSubmit() {
     if (!inputValue.trim() || !$isConfigured || $isStreaming) return;
@@ -133,7 +145,11 @@
       {#each $messages as message}
         <div class="message {message.role}">
           <div class="message-content">
-            {message.content}
+            {#if message.role === 'assistant'}
+              {@html renderMarkdown(message.content)}
+            {:else}
+              {message.content}
+            {/if}
           </div>
         </div>
       {/each}
@@ -141,7 +157,7 @@
       {#if $isStreaming && $streamingResponse}
         <div class="message assistant streaming">
           <div class="message-content">
-            {$streamingResponse}<span class="cursor">▋</span>
+            {@html renderMarkdown($streamingResponse)}<span class="cursor">▋</span>
           </div>
         </div>
       {/if}
@@ -335,9 +351,90 @@
     color: var(--text-primary);
     padding: 0.75rem;
     border-radius: 12px 12px 12px 4px;
-    margin-right: 2rem;
+    margin-right: 1rem;
     font-size: 0.875rem;
-    white-space: pre-wrap;
+  }
+
+  /* Markdown content styling in assistant messages */
+  .message.assistant .message-content :global(p) {
+    margin: 0 0 0.5rem 0;
+    line-height: 1.5;
+  }
+
+  .message.assistant .message-content :global(p:last-child) {
+    margin-bottom: 0;
+  }
+
+  .message.assistant .message-content :global(h1),
+  .message.assistant .message-content :global(h2),
+  .message.assistant .message-content :global(h3) {
+    margin: 0.75rem 0 0.5rem 0;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .message.assistant .message-content :global(h1) { font-size: 1.1rem; }
+  .message.assistant .message-content :global(h2) { font-size: 1rem; }
+  .message.assistant .message-content :global(h3) { font-size: 0.9rem; }
+
+  .message.assistant .message-content :global(ul),
+  .message.assistant .message-content :global(ol) {
+    margin: 0.5rem 0;
+    padding-left: 1.25rem;
+  }
+
+  .message.assistant .message-content :global(li) {
+    margin: 0.25rem 0;
+  }
+
+  .message.assistant .message-content :global(code) {
+    background: var(--bg-primary);
+    padding: 0.15rem 0.35rem;
+    border-radius: 3px;
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 0.8em;
+    color: #f472b6;
+  }
+
+  .message.assistant .message-content :global(pre) {
+    background: var(--bg-primary);
+    padding: 0.75rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 0.5rem 0;
+  }
+
+  .message.assistant .message-content :global(pre code) {
+    background: none;
+    padding: 0;
+    color: var(--text-primary);
+    font-size: 0.8rem;
+  }
+
+  .message.assistant .message-content :global(blockquote) {
+    border-left: 3px solid var(--accent);
+    padding-left: 0.75rem;
+    margin: 0.5rem 0;
+    color: var(--text-secondary);
+    font-style: italic;
+  }
+
+  .message.assistant .message-content :global(a) {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .message.assistant .message-content :global(a:hover) {
+    text-decoration: underline;
+  }
+
+  .message.assistant .message-content :global(strong) {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .message.assistant .message-content :global(em) {
+    font-style: italic;
   }
 
   .cursor {
