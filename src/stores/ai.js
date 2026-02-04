@@ -4,6 +4,9 @@ import { writable, derived, get } from 'svelte/store';
 export const provider = writable('anthropic'); // 'anthropic' or 'openai'
 export const apiKey = writable('');
 
+// Current framework/mode
+export const currentFramework = writable('default');
+
 // Conversation history
 export const messages = writable([]);
 

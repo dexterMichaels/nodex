@@ -3,6 +3,8 @@
  * Direct API calls to Anthropic/OpenAI with streaming support.
  */
 
+import { buildSystemPrompt } from './frameworks.js';
+
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
@@ -203,12 +205,14 @@ export async function sendMessage({
   messages,
   vaultStructure,
   currentFile,
+  framework = 'default',
   onChunk
 }) {
-  // Build context-aware system prompt
-  let systemPrompt = getSystemPrompt(vaultStructure);
+  // Build context-aware system prompt using the active framework
+  let systemPrompt = buildSystemPrompt(framework, vaultStructure, currentFile);
 
-  if (currentFile) {
+  // Add current file content if available
+  if (currentFile && currentFile.content) {
     systemPrompt += `\n\n## Currently Open File\n\nPath: ${currentFile.path}\n\nContent:\n\`\`\`markdown\n${currentFile.content}\n\`\`\``;
   }
 

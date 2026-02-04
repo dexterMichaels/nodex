@@ -3,6 +3,12 @@ import { writable, derived } from 'svelte/store';
 // Root directory handle
 export const rootHandle = writable(null);
 
+// Current view mode: 'editor' or 'graph'
+export const viewMode = writable('editor');
+
+// Editor mode: 'edit' or 'preview'
+export const editorMode = writable('edit');
+
 // File tree structure
 export const fileTree = writable([]);
 

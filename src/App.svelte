@@ -1,15 +1,36 @@
 <script>
   import { onMount } from 'svelte';
-  import { rootHandle, fileTree, vaultName, currentFile, isLoading, error } from './stores/vault.js';
+  import { rootHandle, fileTree, vaultName, currentFile, isLoading, error, viewMode, editorMode } from './stores/vault.js';
   import { messages } from './stores/ai.js';
-  import { isSupported, openVault, buildFileTree } from './lib/filesystem.js';
+  import { isSupported, openVault, buildFileTree, readFile } from './lib/filesystem.js';
   import FileTree from './components/FileTree.svelte';
   import Editor from './components/Editor.svelte';
+  import MarkdownPreview from './components/MarkdownPreview.svelte';
+  import GraphView from './components/GraphView.svelte';
   import AIPanel from './components/AIPanel.svelte';
   import Toolbar from './components/Toolbar.svelte';
 
   const supported = isSupported();
   let testMode = false;
+
+  // Handle node selection from graph view
+  async function handleNodeSelect(event) {
+    const { file } = event.detail;
+    if (file) {
+      try {
+        let content = '';
+        if (file.handle) {
+          content = await readFile(file.handle);
+        } else if (file.content) {
+          content = file.content;
+        }
+        $currentFile = { ...file, content };
+        $viewMode = 'editor'; // Switch to editor to show the file
+      } catch (err) {
+        console.error('Failed to read file:', err);
+      }
+    }
+  }
 
   onMount(() => {
     // Check for test mode
@@ -26,20 +47,34 @@
     $rootHandle = { name: 'Test Vault' }; // Mock handle to bypass welcome screen
 
     // Generate mock file tree with many files to test scrolling
+    // Include content with wiki-links for graph testing
     const mockFolders = ['Concepts', 'Projects', 'Journal', 'Processes', 'Systems'];
-    const mockTree = mockFolders.map(folder => ({
+    const mockTree = mockFolders.map((folder, fi) => ({
       name: folder,
       path: folder,
       type: 'folder',
       expanded: folder === 'Concepts',
       handle: null,
-      children: Array.from({ length: 10 }, (_, i) => ({
-        name: `${folder.slice(0, -1)} ${i + 1}.md`,
-        path: `${folder}/${folder.slice(0, -1)} ${i + 1}.md`,
-        type: 'file',
-        isMarkdown: true,
-        handle: null
-      }))
+      children: Array.from({ length: 10 }, (_, i) => {
+        // Create links between files for graph visualization
+        const links = [];
+        if (i > 0) links.push(`[[${folder.slice(0, -1)} ${i}]]`);
+        if (i < 9) links.push(`[[${folder.slice(0, -1)} ${i + 2}]]`);
+        // Cross-folder links
+        if (i === 0 && fi < mockFolders.length - 1) {
+          links.push(`[[${mockFolders[fi + 1].slice(0, -1)} 1]]`);
+        }
+        links.push('[[README]]');
+
+        return {
+          name: `${folder.slice(0, -1)} ${i + 1}.md`,
+          path: `${folder}/${folder.slice(0, -1)} ${i + 1}.md`,
+          type: 'file',
+          isMarkdown: true,
+          handle: null,
+          content: `# ${folder.slice(0, -1)} ${i + 1}\n\nThis is a test note.\n\n## Links\n\n${links.join('\n')}`
+        };
+      })
     }));
 
     // Add some root-level files
@@ -177,7 +212,53 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor i
         <FileTree />
       </aside>
       <section class="editor-pane" data-testid="editor-pane">
-        <Editor />
+        <div class="view-toggle" data-testid="view-toggle">
+          <div class="toggle-group">
+            <button
+              class="toggle-btn"
+              class:active={$viewMode === 'editor'}
+              on:click={() => $viewMode = 'editor'}
+            >
+              Editor
+            </button>
+            <button
+              class="toggle-btn"
+              class:active={$viewMode === 'graph'}
+              on:click={() => $viewMode = 'graph'}
+            >
+              Graph
+            </button>
+          </div>
+          {#if $viewMode === 'editor'}
+            <div class="toggle-group">
+              <button
+                class="toggle-btn small"
+                class:active={$editorMode === 'edit'}
+                on:click={() => $editorMode = 'edit'}
+              >
+                Edit
+              </button>
+              <button
+                class="toggle-btn small"
+                class:active={$editorMode === 'preview'}
+                on:click={() => $editorMode = 'preview'}
+              >
+                Preview
+              </button>
+            </div>
+          {/if}
+        </div>
+        {#if $viewMode === 'editor'}
+          {#if $editorMode === 'edit'}
+            <Editor />
+          {:else}
+            <MarkdownPreview />
+          {/if}
+        {:else}
+          <div class="graph-wrapper" on:nodeselect={handleNodeSelect}>
+            <GraphView />
+          </div>
+        {/if}
       </section>
       <aside class="ai-pane" data-testid="ai-pane">
         <AIPanel />
@@ -322,6 +403,54 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor i
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    min-height: 0;
+  }
+
+  .view-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .toggle-group {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .toggle-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 0.35rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: all 0.15s;
+  }
+
+  .toggle-btn.small {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.7rem;
+  }
+
+  .toggle-btn:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+  }
+
+  .toggle-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+
+  .graph-wrapper {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .ai-pane {

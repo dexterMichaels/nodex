@@ -3,14 +3,17 @@
   import {
     provider, apiKey, messages, streamingResponse, isStreaming,
     showSettings, isConfigured, addMessage, startStreaming,
-    appendToStream
+    appendToStream, currentFramework
   } from '../stores/ai.js';
   import { currentFile, vaultStructureText } from '../stores/vault.js';
   import { sendMessage } from '../lib/ai.js';
+  import { getAllFrameworks } from '../lib/frameworks.js';
 
   let inputValue = '';
   let messagesContainer;
   let inputElement;
+
+  const frameworks = getAllFrameworks();
 
   async function handleSubmit() {
     if (!inputValue.trim() || !$isConfigured || $isStreaming) return;
@@ -31,6 +34,7 @@
         messages: $messages,
         vaultStructure: $vaultStructureText,
         currentFile: $currentFile,
+        framework: $currentFramework,
         onChunk: (text) => {
           appendToStream(text);
         }
@@ -99,6 +103,17 @@
           Configure API
         </button>
       {/if}
+    </div>
+
+    <div class="framework-selector" data-testid="framework-selector">
+      <select bind:value={$currentFramework}>
+        {#each frameworks as fw}
+          <option value={fw.id}>{fw.name}</option>
+        {/each}
+      </select>
+      <span class="framework-hint">
+        {frameworks.find(f => f.id === $currentFramework)?.description || ''}
+      </span>
     </div>
 
     <div class="messages" bind:this={messagesContainer} data-testid="ai-messages">
@@ -196,6 +211,37 @@
 
   .configure-btn:hover {
     background: var(--accent-hover);
+  }
+
+  .framework-selector {
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex-shrink: 0;
+  }
+
+  .framework-selector select {
+    width: 100%;
+    padding: 0.4rem 0.5rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+
+  .framework-selector select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .framework-hint {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-style: italic;
   }
 
   .settings {
